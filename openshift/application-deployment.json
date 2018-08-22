@@ -1,0 +1,416 @@
+{
+  "kind": "List",
+  "apiVersion": "v1",
+  "items": [
+    {
+      "kind": "ImageStream",
+      "apiVersion": "v1",
+      "metadata": {
+        "name": "openshift-health-checks-demo",
+        "annotations": {
+          "description": "Keeps track of changes in the application image"
+        },
+        "labels": {
+          "app": "openshift-health-checks-demo"
+        }
+      }
+    },
+    {
+      "kind": "BuildConfig",
+      "apiVersion": "v1",
+      "metadata": {
+        "name": "openshift-health-checks-demo",
+        "annotations": {
+          "description": "Defines how to build an application"
+        },
+        "labels": {
+          "app": "openshift-health-checks-demo"
+        }
+      },
+      "spec": {
+        "source": {
+          "type": "Git",
+          "git": {
+            "uri": "https://github.com/agolPL/openshift-health-checks-demo.git"
+          }
+        },
+        "strategy": {
+          "type": "Source",
+          "sourceStrategy": {
+            "from": {
+              "kind": "DockerImage",
+              "name": "andipansa/s2i-gradle:1.1.0"
+            },
+            "incremental": true
+          }
+        },
+        "output": {
+          "to": {
+            "kind": "ImageStreamTag",
+            "name": "openshift-health-checks-demo:latest"
+          }
+        },
+        "triggers": [
+          {
+            "type": "ImageChange"
+          },
+          {
+            "type": "ConfigChange"
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "apps.openshift.io/v1",
+      "kind": "DeploymentConfig",
+      "metadata": {
+        "labels": {
+          "app": "openshift-health-checks-demo"
+        },
+        "name": "openshift-health-checks-demo"
+      },
+      "spec": {
+        "replicas": 1,
+        "revisionHistoryLimit": 10,
+        "selector": {
+          "app": "openshift-health-checks-demo",
+          "deploymentconfig": "openshift-health-checks-demo"
+        },
+        "strategy": {
+          "activeDeadlineSeconds": 21600,
+          "resources": {},
+          "rollingParams": {
+            "intervalSeconds": 1,
+            "maxSurge": "25%",
+            "maxUnavailable": "25%",
+            "timeoutSeconds": 600,
+            "updatePeriodSeconds": 1
+          },
+          "type": "Rolling"
+        },
+        "template": {
+          "metadata": {
+            "labels": {
+              "app": "openshift-health-checks-demo",
+              "deploymentconfig": "openshift-health-checks-demo"
+            }
+          },
+          "spec": {
+            "containers": [
+              {
+                "env": [
+                  {
+                    "name": "JAVA_OPTS",
+                    "value": "-Xmx512m -Xms512m"
+                  },
+                  {
+                    "name": "DATABASE_USER",
+                    "valueFrom": {
+                      "secretKeyRef": {
+                        "key": "database-user",
+                        "name": "openshift-health-checks-demo-database-secret"
+                      }
+                    }
+                  },
+                  {
+                    "name": "DATABASE_PASSWORD",
+                    "valueFrom": {
+                      "secretKeyRef": {
+                        "key": "database-password",
+                        "name": "openshift-health-checks-demo-database-secret"
+                      }
+                    }
+                  },
+                  {
+                    "name": "DATABASE_URL",
+                    "value": "jdbc:postgresql://openshift-health-checks-demo-database/test"
+                  },
+                  {
+                    "name": "DATABASE_DRIVER",
+                    "value": "org.postgresql.Driver"
+                  }
+                ],
+                "name": "openshift-health-checks-demo",
+                "ports": [
+                  {
+                    "containerPort": 8080,
+                    "protocol": "TCP"
+                  }
+                ],
+                "volumeMounts": [
+                ]
+              }
+            ],
+            "volumes": [
+            ]
+          }
+        },
+        "triggers": [
+          {
+            "type": "ConfigChange"
+          },
+          {
+            "imageChangeParams": {
+              "automatic": true,
+              "containerNames": [
+                "openshift-health-checks-demo"
+              ],
+              "from": {
+                "kind": "ImageStreamTag",
+                "name": "openshift-health-checks-demo:latest"
+              }
+            },
+            "type": "ImageChange"
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Service",
+      "metadata": {
+        "labels": {
+          "app": "openshift-health-checks-demo",
+          "template": "spring-boot-template"
+        },
+        "name": "openshift-health-checks-demo"
+      },
+      "spec": {
+        "ports": [
+          {
+            "port": 8080,
+            "protocol": "TCP",
+            "targetPort": 8080
+          }
+        ],
+        "selector": {
+          "app": "openshift-health-checks-demo",
+          "deploymentconfig": "openshift-health-checks-demo"
+        },
+        "type": "ClusterIP"
+      }
+    },
+    {
+      "kind": "Route",
+      "apiVersion": "v1",
+      "metadata": {
+        "labels": {
+          "app": "openshift-health-checks-demo",
+          "template": "spring-boot-template"
+        },
+        "name": "openshift-health-checks-demo"
+      },
+      "spec": {
+        "port": {
+          "targetPort": 8080
+        },
+        "to": {
+          "kind": "Service",
+          "name": "openshift-health-checks-demo"
+        }
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "PersistentVolumeClaim",
+      "metadata": {
+        "name": "openshift-health-checks-demo-database-storage",
+        "labels": {
+          "app": "openshift-health-checks-demo",
+          "template": "spring-boot-template"
+        }
+      },
+      "spec": {
+        "accessModes": [
+          "ReadWriteOnce"
+        ],
+        "resources": {
+          "requests": {
+            "storage": "50Mi"
+          }
+        }
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Secret",
+      "stringData": {
+        "database-name": "test",
+        "database-password": "test",
+        "database-user": "test"
+      },
+      "metadata": {
+        "labels": {
+          "app": "openshift-health-checks-demo",
+          "template": "spring-boot-template"
+        },
+        "name": "openshift-health-checks-demo-database-secret"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "DeploymentConfig",
+      "metadata": {
+        "annotations": {
+          "template.alpha.openshift.io/wait-for-ready": "true"
+        },
+        "labels": {
+          "app": "openshift-health-checks-demo",
+          "template": "spring-boot-template"
+        },
+        "name": "openshift-health-checks-demo-database"
+      },
+      "spec": {
+        "replicas": 1,
+        "selector": {
+          "name": "openshift-health-checks-demo-database"
+        },
+        "strategy": {
+          "type": "Recreate"
+        },
+        "template": {
+          "metadata": {
+            "labels": {
+              "name": "openshift-health-checks-demo-database"
+            }
+          },
+          "spec": {
+            "containers": [
+              {
+                "capabilities": {},
+                "env": [
+                  {
+                    "name": "POSTGRESQL_USER",
+                    "valueFrom": {
+                      "secretKeyRef": {
+                        "key": "database-user",
+                        "name": "openshift-health-checks-demo-database-secret"
+                      }
+                    }
+                  },
+                  {
+                    "name": "POSTGRESQL_PASSWORD",
+                    "valueFrom": {
+                      "secretKeyRef": {
+                        "key": "database-password",
+                        "name": "openshift-health-checks-demo-database-secret"
+                      }
+                    }
+                  },
+                  {
+                    "name": "POSTGRESQL_DATABASE",
+                    "valueFrom": {
+                      "secretKeyRef": {
+                        "key": "database-name",
+                        "name": "openshift-health-checks-demo-database-secret"
+                      }
+                    }
+                  }
+                ],
+                "image": " ",
+                "imagePullPolicy": "IfNotPresent",
+                "livenessProbe": {
+                  "exec": {
+                    "command": [
+                      "/bin/sh",
+                      "-i",
+                      "-c",
+                      "pg_isready -h 127.0.0.1 -p 5432"
+                    ]
+                  },
+                  "initialDelaySeconds": 30,
+                  "timeoutSeconds": 1
+                },
+                "name": "postgresql",
+                "ports": [
+                  {
+                    "containerPort": 5432,
+                    "protocol": "TCP"
+                  }
+                ],
+                "readinessProbe": {
+                  "exec": {
+                    "command": [
+                      "/bin/sh",
+                      "-i",
+                      "-c",
+                      "psql -h 127.0.0.1 -U $POSTGRESQL_USER -q -d $POSTGRESQL_DATABASE -c 'SELECT 1'"
+                    ]
+                  },
+                  "initialDelaySeconds": 5,
+                  "timeoutSeconds": 1
+                },
+                "resources": {
+                },
+                "securityContext": {
+                  "capabilities": {},
+                  "privileged": false
+                },
+                "terminationMessagePath": "/dev/termination-log",
+                "volumeMounts": [
+                  {
+                    "mountPath": "/var/lib/pgsql/data",
+                    "name": "openshift-health-checks-demo-data"
+                  }
+                ]
+              }
+            ],
+            "dnsPolicy": "ClusterFirst",
+            "restartPolicy": "Always",
+            "volumes": [
+              {
+                "name": "openshift-health-checks-demo-data",
+                "persistentVolumeClaim": {
+                  "claimName": "openshift-health-checks-demo-database-storage"
+                }
+              }
+            ]
+          }
+        },
+        "triggers": [
+          {
+            "imageChangeParams": {
+              "automatic": true,
+              "containerNames": [
+                "postgresql"
+              ],
+              "from": {
+                "kind": "ImageStreamTag",
+                "name": "postgresql:9.6",
+                "namespace": "openshift"
+              },
+              "lastTriggeredImage": ""
+            },
+            "type": "ImageChange"
+          },
+          {
+            "type": "ConfigChange"
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Service",
+      "metadata": {
+        "labels": {
+          "app": "openshift-health-checks-demo"
+        },
+        "name": "openshift-health-checks-demo-database"
+      },
+      "spec": {
+        "ports": [
+          {
+            "port": 5432,
+            "protocol": "TCP",
+            "targetPort": 5432
+          }
+        ],
+        "selector": {
+          "name": "openshift-health-checks-demo-database"
+        },
+        "type": "ClusterIP"
+      }
+    }
+  ]
+}
