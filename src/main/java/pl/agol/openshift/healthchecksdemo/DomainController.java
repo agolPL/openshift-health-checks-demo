@@ -10,7 +10,7 @@ class DomainController {
 
     private int requestDelay = 0;
 
-    @PostMapping("hi")
+    @PostMapping("delay")
     void setDelay(@RequestBody int requestDelay) {
         this.requestDelay = requestDelay;
         log.info("New value of delay: {} ms", requestDelay);
