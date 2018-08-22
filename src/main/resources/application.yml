@@ -8,3 +8,5 @@ spring:
     username: ${database.user}
     password: ${database.password}
     driverClassName: ${database.driver:org.postgresql.Driver}
+
+management.endpoints.beans.enabled: false
