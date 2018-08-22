@@ -1,1 +1,10 @@
 application-start-delay: 100
+
+spring:
+  datasource:
+    validation-query: SELECT 1
+    test-on-borrow: true
+    url: ${database.url}
+    username: ${database.user}
+    password: ${database.password}
+    driverClassName: ${database.driver:org.postgresql.Driver}
